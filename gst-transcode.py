@@ -88,6 +88,7 @@ class Transcoder(object):
         elif t == Gst.MessageType.ELEMENT:
             if message.structure.name == 'progress':
                 print message.structure.to_string()
+        return True
 
     def _decodebin_pad_added(self, decodebin, pad, udata=None):
         caps = pad.query_caps(None)

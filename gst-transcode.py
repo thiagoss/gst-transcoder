@@ -117,15 +117,20 @@ class Transcoder(GObject.GObject):
 
     def stop(self):
         __,st,__ = t.pipeline.get_state(0)
-        t.pipeline.set_state(Gst.State.NULL)
+        self._do_stop()
         if st in [Gst.State.PLAYING, Gst.State.PAUSED]:
             self.emit("error", 'Aborted', None)
+
+    def _do_stop(self):
+        t.pipeline.set_state(Gst.State.NULL)
 
     def _bus_message_handler(self, bus, message, udata=None):
         t = message.type
         if t == Gst.MessageType.EOS:
+            self._do_stop()
             self.emit('eos')
         elif t == Gst.MessageType.ERROR:
+            self._do_stop()
             err,debug = message.parse_error()
             self.emit('error', err.message, debug)
         elif t == Gst.MessageType.ELEMENT:

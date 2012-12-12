@@ -31,8 +31,6 @@ from gi.repository import GObject, Gst, GstPbutils
 GObject.threads_init()
 Gst.init(None)
 
-discoverer = GstPbutils.Discoverer()
-
 def create_webm_profile():
     webmcaps = Gst.Caps.new_empty_simple('video/webm')
     vp8caps = Gst.Caps.new_empty_simple('video/x-vp8')
@@ -45,7 +43,34 @@ def create_webm_profile():
     container.add_profile(audio)
     return container
 
-class Transcoder(object):
+class Transcoder(GObject.GObject):
+    """
+
+
+       Signals:
+       eos - Signal emited when the transcoder has successfully finished processing
+       error - Signal emited when the transcoder has finished because it found an error
+       progress - Signal emited periodically to inform about the progress of the transcoding
+    """
+
+    __gsignals__ = {'eos': (GObject.SignalFlags.RUN_LAST,
+                            GObject.TYPE_NONE,
+                            ()),
+                    'error': (GObject.SignalFlags.RUN_LAST,
+                              GObject.TYPE_NONE,
+                              (GObject.TYPE_STRING, GObject.TYPE_STRING)),
+                    'progress': (GObject.SignalFlags.RUN_LAST,
+                                 GObject.TYPE_NONE,
+                                 (GObject.TYPE_FLOAT,)),
+                   }
+    def eos(self):
+        pass
+    def error(self, error_message, debug_message):
+        pass
+    def progress(self, progress):
+        pass
+
+
     def __init__(self):
         super(Transcoder, self).__init__()
         self.pipeline = Gst.Pipeline()
@@ -82,12 +107,15 @@ class Transcoder(object):
     def _bus_message_handler(self, bus, message, udata=None):
         t = message.type
         if t == Gst.MessageType.EOS:
-          print 'EOS'
+            self.emit('eos')
         elif t == Gst.MessageType.ERROR:
-          print 'ERROR'
+            err,debug = message.parse_error()
+            self.emit('error', err.message, debug)
         elif t == Gst.MessageType.ELEMENT:
             if message.get_structure().get_name() == 'progress':
-                print message.get_structure().to_string()
+                found,perc = message.get_structure().get_double('percent-double')
+                if found:
+                    self.emit('progress', perc)
         return True
 
     def _decodebin_pad_added(self, decodebin, pad, udata=None):

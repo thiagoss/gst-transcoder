@@ -51,6 +51,7 @@ class Transcoder(GObject.GObject):
        eos - Signal emited when the transcoder has successfully finished processing
        error - Signal emited when the transcoder has finished because it found an error
        progress - Signal emited periodically to inform about the progress of the transcoding
+       started - Signal emited when transcoding starts
     """
 
     __gsignals__ = {'eos': (GObject.SignalFlags.RUN_LAST,
@@ -62,6 +63,9 @@ class Transcoder(GObject.GObject):
                     'progress': (GObject.SignalFlags.RUN_LAST,
                                  GObject.TYPE_NONE,
                                  (GObject.TYPE_FLOAT,)),
+                    'started': (GObject.SignalFlags.RUN_LAST,
+                                GObject.TYPE_NONE,
+                                ()),
                    }
     def eos(self):
         pass
@@ -69,7 +73,8 @@ class Transcoder(GObject.GObject):
         pass
     def progress(self, progress):
         pass
-
+    def started(self):
+        pass
 
     def __init__(self):
         super(Transcoder, self).__init__()
@@ -103,6 +108,18 @@ class Transcoder(GObject.GObject):
 
     def set_encoding_profile(self, profile):
         self.encodebin.set_property('profile', profile)
+
+    def start(self):
+        self.emit('started')
+        ret = t.pipeline.set_state(Gst.State.PLAYING)
+        if ret == Gst.StateChangeReturn.FAILURE:
+            self.emit("error", "Failed to start", None)
+
+    def stop(self):
+        __,st,__ = t.pipeline.get_state(0)
+        t.pipeline.set_state(Gst.State.NULL)
+        if st in [Gst.State.PLAYING, Gst.State.PAUSED]:
+            self.emit("error", 'Aborted', None)
 
     def _bus_message_handler(self, bus, message, udata=None):
         t = message.type
@@ -165,7 +182,7 @@ t.set_destination_location(args.destination)
 t.set_encoding_profile(create_webm_profile())
 t.set_source_location(args.source)
 
-ret = t.pipeline.set_state(Gst.State.PLAYING)
+t.start()
 loop = GObject.MainLoop()
 loop.run()
 

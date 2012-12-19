@@ -167,27 +167,26 @@ class Transcoder(GObject.GObject):
         queue.get_static_pad('src').link(encpad)
         queue.sync_state_with_parent()
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='GStreamer Transcoder')
+    parser.add_argument('--source', type=str,
+                        help='The source file location')
+    parser.add_argument('--destination', type=str,
+                        help='The destination file location')
 
-parser = argparse.ArgumentParser(description='GStreamer Transcoder')
-parser.add_argument('--source', type=str,
-                   help='The source file location')
-parser.add_argument('--destination', type=str,
-                   help='The destination file location')
+    args = parser.parse_args()
+    if not args.source:
+        print 'no source location supplied'
+        sys.exit(-1)
+    if not args.destination:
+        print 'no destination location supplied'
+        sys.exit(-1)
 
-args = parser.parse_args()
-if not args.source:
-    print 'no source location supplied'
-    sys.exit(-1)
-if not args.destination:
-    print 'no destination location supplied'
-    sys.exit(-1)
-
-t = Transcoder()
-t.set_destination_location(args.destination)
-t.set_encoding_profile(create_webm_profile())
-t.set_source_location(args.source)
-
-t.start()
-loop = GObject.MainLoop()
-loop.run()
+    t = Transcoder()
+    t.set_destination_location(args.destination)
+    t.set_encoding_profile(create_webm_profile())
+    t.set_source_location(args.source)
+    t.start()
+    loop = GObject.MainLoop()
+    loop.run()
 

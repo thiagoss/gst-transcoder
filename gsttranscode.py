@@ -118,18 +118,18 @@ class Transcoder(GObject.GObject):
 
     def start(self):
         self.emit('started')
-        ret = t.pipeline.set_state(Gst.State.PLAYING)
+        ret = self.pipeline.set_state(Gst.State.PLAYING)
         if ret == Gst.StateChangeReturn.FAILURE:
-            self.emit("error", "Failed to start", None)
+            self.emit("error", "Failed to start", "")
 
     def stop(self):
-        __,st,__ = t.pipeline.get_state(0)
+        __,st,__ = self.pipeline.get_state(0)
         self._do_stop()
         if st in [Gst.State.PLAYING, Gst.State.PAUSED]:
             self.emit("error", 'Aborted', None)
 
     def _do_stop(self):
-        t.pipeline.set_state(Gst.State.NULL)
+        self.pipeline.set_state(Gst.State.NULL)
 
     def _bus_message_handler(self, bus, message, udata=None):
         t = message.type
@@ -149,9 +149,9 @@ class Transcoder(GObject.GObject):
 
     def _decodebin_pad_added(self, decodebin, pad, udata=None):
         caps = pad.query_caps(None)
-	if not caps:
-	    print 'pad with no caps ignored'
-	    return
+        if not caps:
+            print 'pad with no caps ignored'
+            return
 
         queue = Gst.ElementFactory.make('queue', None)
 

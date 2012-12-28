@@ -76,9 +76,12 @@ class Transcoder(GObject.GObject):
     def started(self):
         pass
 
-    def __init__(self):
+    def __init__(self, name):
         super(Transcoder, self).__init__()
-        self.pipeline = Gst.Pipeline()
+        if name:
+            self.pipeline = Gst.Pipeline.new(name)
+        else:
+            self.pipeline = Gst.Pipeline()
         self.filesink = Gst.ElementFactory.make('filesink', None)
         self.encodebin = Gst.ElementFactory.make('encodebin', None)
         self.decodebin = Gst.ElementFactory.make('decodebin', None)
@@ -108,6 +111,10 @@ class Transcoder(GObject.GObject):
 
     def set_encoding_profile(self, profile):
         self.encodebin.set_property('profile', profile)
+
+    @property
+    def name(self):
+        return self.pipeline.get_property('name')
 
     def start(self):
         self.emit('started')

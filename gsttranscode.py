@@ -76,8 +76,12 @@ class Transcoder(GObject.GObject):
     def started(self):
         pass
 
-    def __init__(self, name):
+    def __init__(self, name=None):
         super(Transcoder, self).__init__()
+
+        self.max_width = None
+        self.max_height = None
+
         if name:
             self.pipeline = Gst.Pipeline.new(name)
         else:
@@ -111,6 +115,10 @@ class Transcoder(GObject.GObject):
 
     def set_encoding_profile(self, profile):
         self.encodebin.set_property('profile', profile)
+
+    def set_max_video_size(self, w, h):
+        self.max_width = w
+        self.max_height = h
 
     @property
     def name(self):
@@ -159,6 +167,43 @@ class Transcoder(GObject.GObject):
 
         if caps.get_structure(0).get_name().startswith('video'):
             encpad = self.encodebin.get_request_pad('video_%u')
+            width = caps.get_structure(0).get_int('width')
+            height = caps.get_structure(0).get_int('height')
+            if width[0] and height[0]:
+                width = width[1]
+                height = height[1]
+                update = False
+                if self.max_width and width > self.max_width:
+                    height = int(height * self.max_width/float(width))
+                    width = self.max_width
+                    update = True
+                if self.max_height and height > self.max_height:
+                    width = int(width * self.max_height/float(height))
+                    height = 768
+                    update = True
+                if update:
+                    cf = Gst.ElementFactory.make('capsfilter', None)
+                    vs = Gst.ElementFactory.make('videoscale', None)
+                    vc = Gst.ElementFactory.make('videoconvert', None)
+
+                    c = Gst.Caps.new_empty_simple('video/x-raw')
+                    c.get_structure(0).set_value('width', width)
+                    c.get_structure(0).set_value('height', height)
+                    cf.set_property('caps', c)
+
+                    self.pipeline.add(cf)
+                    self.pipeline.add(vs)
+                    self.pipeline.add(vc)
+                    vc.link(vs)
+                    vs.link(cf)
+                    cf.sync_state_with_parent()
+                    vs.sync_state_with_parent()
+                    vc.sync_state_with_parent()
+                    pad.link(vc.get_static_pad('sink'))
+                    pad = cf.get_static_pad('src')
+                
+
+
         elif caps.get_structure(0).get_name().startswith('audio'):
             encpad = self.encodebin.get_request_pad('audio_%u')
         else:
